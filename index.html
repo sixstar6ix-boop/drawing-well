@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Drawing Well</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      background: #f0f4ff;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen {
+      display: none;
+      padding: 20px 16px;
+    }
+    .screen.active { display: block; }
+    .container { max-width: 480px; margin: 0 auto; }
+
+    .app-logo {
+      text-align: center;
+      margin: 24px 0 16px;
+    }
+    .logo-top { font-size: 34px; font-weight: 800; color: #4f46e5; }
+    .logo-pencil { font-size: 48px; margin: 8px;  }
+    .logo-bottom { font-size: 34px; font-weight: 800; color: #4f46e5; }
+    .subtitle { text-align: center; color: #6b7280; margin-bottom: 28px; }
+
+    .upload-area {
+      background: #fff;
+      border-radius: 16px;
+      padding: 40px 24px;
+      text-align: center;
+      border: 2px dashed #c7d2fe;
+      margin-bottom: 24px;
+      cursor: pointer;
+    }
+    .upload-area p { color: #4f46e5; font-size: 17px; margin-top: 12px; }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(99,102,241,.08);
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    /* ✅ 사파리 슬라이더 전용 스타일 */
+    .slider-container {
+      width: 100%;
+      padding: 10px 0;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 44px;
+      background: transparent;
+      position: relative;
+      z-index: 10;
+      cursor: pointer;
+      display: block;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 28px;
+      height: 28px;
+      background: #4f46e5;
+      border-radius: 50%;
+      margin-top: -11px;
+      cursor: pointer;
+    }
+    .value-display {
+      text-align: right;
+      color: #4f46e5;
+      font-weight: bold;
+      margin-top: 4px;
+    }
+
+    .preview-box {
+      background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 50%/20px 20px;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      height: 360px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      touch-action: none;
+    }
+    .img-wrap {
+      transform-origin: center;
+      will-change: transform;
+      width: 100%;
+      height: 100%;
+    }
+    .preview-box img {
+      max-width: 100%;
+      max-height: 320px;
+      display: block;
+    }
+    .hint-text {
+      text-align: center;
+      color: #888;
+      font-size: 12px;
+      margin: 4px 0 8px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    button {
+      flex: 1;
+      min-width: 100px;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 50px;
+    }
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-danger { background: #fee2e2; color: #dc2626; }
+    .btn-success { background: #d1fae5; color: #059669; }
+    .btn-gray { background: #e5e7eb; color: #374151; }
+
+    .camera-wrap {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      z-index: 1;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(1);
+    }
+    .overlay-img {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      transform-origin: center;
+      will-change: transform;
+      touch-action: none;
+    }
+    .camera-controls {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      width: 100%;
+      max-width: 420px;
+      padding: 0 16px;
+    }
+    .camera-controls .inner {
+      background: rgba(0,0,0,.6);
+      padding: 14px;
+      border-radius: 16px;
+    }
+    .camera-hint { color: #ccc; font-size: 12px; text-align: center; margin-top: 8px; }
+
+    #fileInput { display: none; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div id="screen1" class="screen active">
+  <div class="container">
+    <div class="app-logo"><div class="logo-top">Drawing</div><div class="logo-pencil">✏️</div><div class="logo-bottom">Well</div></div>
+    <p class="subtitle">따라 그리고 싶은 그림을 업로드하고 투명도를 정해주세요</p>
+    <label class="upload-area" id="uploadArea" for="fileInput"><div style="font-size:40px">📁</div><p>터치해서 이미지 업로드</p></label>
+
+    <div class="card hidden" id="inputArea">
+      <label>투명한 정도 (10~90)</label>
+      <div class="slider-container">
+        <input type="range" id="opacitySlider" min="10" max="90" step="5" value="50">
+      </div>
+      <div class="value-display" id="opacityValue">50%</div>
+
+      <div class="preview-box" id="previewBox1">
+        <div class="img-wrap" id="imgWrap1"><img id="previewImg" alt="미리보기"></div>
+      </div>
+      <p class="hint-text">👆 드래그 이동 / 🤏 핀치로 확대·축소</p>
+      <div class="btn-row"><button class="btn-primary" id="startBtn">➡️ 다음</button><button class="btn-gray" id="resetBtn">🔄 다시 선택</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="screen2" class="screen">
+  <div class="container">
+    <div class="app-logo"><div class="logo-top">Drawing</div><div class="logo-pencil">✏️</div><div class="logo-bottom">Well</div></div>
+    <p class="subtitle">마음에 들지 않으면 삭제하거나 다시 시도하세요</p>
+    <div class="card">
+      <div class="preview-box" id="previewBox2">
+        <div class="img-wrap" id="imgWrap2"><img id="previewImg2" alt="반투명 미리보기"></div>
+      </div>
+      <p class="hint-text">👆 드래그 이동 / 🤏 핀치로 확대·축소</p>
+      <div class="btn-row"><button class="btn-danger" id="deleteBtn">🗑️ 삭제</button><button class="btn-gray" id="retryBtn">🔄 다시 시도</button></div>
+      <div class="btn-row"><button class="btn-primary" id="saveBtn">💾 저장</button><button class="btn-success" id="drawBtn">✏️ 그리기 시작</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="screen3" class="screen">
+  <div class="camera-wrap"><video id="camera" autoplay playsinline muted></video><img id="overlayImg" class="overlay-img" alt="오버레이 이미지"></div>
+  <div class="camera-controls"><div class="inner"><div style="color:#fff;text-align:center;margin-bottom:10px">💡 기기를 그림 위치에 맞춰 고정하고 따라 그리세요</div><button id="backBtn">← 뒤로 돌아가기</button><p class="camera-hint">👆 드래그로 위치 이동 / 🤏 핀치로 크기 조절</p></div></div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*">
+
+<script>
+const s1=document.getElementById('screen1'),s2=document.getElementById('screen2'),s3=document.getElementById('screen3');
+const uploadArea=document.getElementById('uploadArea'),fileInput=document.getElementById('fileInput'),inputArea=document.getElementById('inputArea');
+const previewImg=document.getElementById('previewImg'),previewImg2=document.getElementById('previewImg2');
+const opacitySlider=document.getElementById('opacitySlider'),opacityValue=document.getElementById('opacityValue');
+const startBtn=document.getElementById('startBtn'),resetBtn=document.getElementById('resetBtn');
+const deleteBtn=document.getElementById('deleteBtn'),retryBtn=document.getElementById('retryBtn');
+const saveBtn=document.getElementById('saveBtn'),drawBtn=document.getElementById('drawBtn'),backBtn=document.getElementById('backBtn');
+const camera=document.getElementById('camera'),overlayImg=document.getElementById('overlayImg');
+
+let originalImageSrc='',currentOpacity=0.5;
+const state1={scale:1,x:0,y:0},state2={scale:1,x:0,y:0},camState={scale:1,x:0,y:0};
+
+function showScreen(n){[s1,s2,s3].forEach(s=>s.classList.remove('active'));document.getElementById(`screen${n}`).classList.add('active');window.scrollTo(0,0)}
+
+// ✅ 슬라이더 — 사파리에서 터치 잘 되도록 개선
+opacitySlider.addEventListener('input',e=>{
+  const v=parseInt(e.target.value);
+  opacityValue.textContent=v+'%';
+  previewImg.style.opacity=previewImg2.style.opacity=currentOpacity=v/100;
+});
+
+fileInput.addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=ev=>{
+    originalImageSrc=ev.target.result;
+    previewImg.src=previewImg2.src=originalImageSrc;
+    previewImg.style.opacity=previewImg2.style.opacity=currentOpacity;
+    inputArea.classList.remove('hidden');
+  };r.readAsDataURL(f);
+});
+
+startBtn.addEventListener('click',()=>{previewImg2.src=originalImageSrc;previewImg2.style.opacity=currentOpacity;showScreen(2)});
+
+function resetAll(){
+  originalImageSrc='';previewImg.src=previewImg2.src=overlayImg.src='';
+  fileInput.value='';inputArea.classList.add('hidden');
+  opacitySlider.value=50;opacityValue.textContent='50%';currentOpacity=0.5;
+  [state1,state2,camState].forEach(s=>{s.scale=1;s.x=0;s.y=0});
+  applyTransform('imgWrap1',state1);applyTransform('imgWrap2',state2);
+}
+resetBtn.addEventListener('click',resetAll);
+deleteBtn.addEventListener('click',()=>{if(confirm('이미지를 삭제하시겠습니까?')){resetAll();showScreen(1)}});
+retryBtn.addEventListener('click',()=>{previewImg.src=originalImageSrc;showScreen(1)});
+saveBtn.addEventListener('click',()=>{
+  const c=document.createElement('canvas'),ctx=c.getContext('2d'),img=new Image;
+  img.onload=()=>{c.width=img.width;c.height=img.height;ctx.globalAlpha=currentOpacity;ctx.drawImage(img,0,0);
+    const l=document.createElement('a');l.download='Drawing_Well.png';l.href=c.toDataURL();l.click();alert('✅ 저장되었습니다!')};
+  img.src=originalImageSrc;
+});
+drawBtn.addEventListener('click',async()=>{
+  if(!originalImageSrc){alert('이미지를 먼저 업로드해주세요!');return}
+  overlayImg.src=originalImageSrc;overlayImg.style.opacity=currentOpacity;
+  showScreen(3);
+  camState.scale=state2.scale;camState.x=state2.x;camState.y=state2.y;
+  applyTransform('overlayImg',camState,1);
+  try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:'environment'}},audio:false});camera.srcObject=st}
+  catch{try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});camera.srcObject=st}catch{alert('⚠️ 설정→사파리→카메라→허용으로 변경해주세요');showScreen(2)}}
+});
+backBtn.addEventListener('click',()=>{if(camera.srcObject)camera.srcObject.getTracks().forEach(t=>t.stop());showScreen(2)});
+
+// ✅ 터치 제어 — 사파리 호환성 완전 보강
+function dist(t1,t2){return Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY)}
+function applyTransform(id,st,cam){
+  const el=document.getElementById(id);
+  el.style.transform=cam?`translate(-50%,-50%) translate(${st.x}px,${st.y}px) scale(${st.scale})`:`translate(${st.x}px,${st.y}px) scale(${st.scale})`;
+}
+function touchSetup(id,st){
+  const el=document.getElementById(id);
+  let sd=0,ss=1,sx=0,sy=0;
+  el.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    const t=e.touches;
+    if(t.length===1){sx=t[0].clientX-st.x;sy=t[0].clientY-st.y}
+    else if(t.length===2){sd=dist(t[0],t[1]);ss=st.scale}
+  },{passive:false});
+  el.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    const t=e.touches;
+    if(t.length===1){st.x=t[0].clientX-sx;st.y=t[0].clientY-sy;applyTransform(id,st,id==='overlayImg')}
+    else if(t.length===2){st.scale=Math.max(.1,Math.min(15,ss*(dist(t[0],t[1])/sd)));applyTransform(id,st,id==='overlayImg')}
+  },{passive:false});
+}
+touchSetup('imgWrap1',state1);touchSetup('imgWrap2',state2);touchSetup('overlayImg',camState);
+</script>
+</body>
+</html>
